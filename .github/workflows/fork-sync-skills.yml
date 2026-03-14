@@ -25,8 +25,20 @@ jobs:
     if: github.repository != 'qwibitai/nanoclaw'
     runs-on: ubuntu-latest
     steps:
+      - name: Detect token type
+        id: detect
+        run: |
+          if [ -n "$APP_ID" ]; then
+            echo "use-app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "use-app=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+
       - uses: actions/create-github-app-token@v1
         id: app-token
+        if: steps.detect.outputs.use-app == 'true'
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -34,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - uses: actions/setup-node@v4
         with:
