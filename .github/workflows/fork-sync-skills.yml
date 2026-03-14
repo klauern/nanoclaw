@@ -144,7 +144,7 @@ jobs:
               continue
             fi
 
-            git push origin "$BRANCH"
+            git push --force-with-lease origin "$BRANCH"
             SUCCEEDED="$SUCCEEDED $SKILL_NAME"
             echo "$BRANCH merged and pushed successfully."
           done

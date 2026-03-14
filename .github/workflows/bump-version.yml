@@ -9,15 +9,27 @@ jobs:
   bump-version:
     runs-on: ubuntu-latest
     steps:
+      - name: Detect token type
+        id: detect
+        run: |
+          if [ -n "$APP_ID" ]; then
+            echo "use-app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "use-app=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+
       - uses: actions/create-github-app-token@v1
         id: app-token
+        if: steps.detect.outputs.use-app == 'true'
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@v4
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Bump patch version
         run: |
