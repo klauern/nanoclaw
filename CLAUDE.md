@@ -55,6 +55,17 @@ systemctl --user stop nanoclaw
 systemctl --user restart nanoclaw
 ```
 
+## Fork Context
+
+This is `klauern/nanoclaw`, a fork of `qwibitai/nanoclaw` (upstream). Remotes: `origin` = fork, `upstream` = qwibitai.
+
+`gh repo view` resolves to upstream — use `gh repo view --repo klauern/nanoclaw` for fork-specific GitHub CLI operations.
+
+Active CI workflows:
+- `fork-sync-skills.yml` — syncs upstream → fork main, then merges main → each `skill/*` branch
+- `bump-version.yml`, `update-tokens.yml` — run on fork; fall back to `github.token` when `APP_ID`/`APP_PRIVATE_KEY` not set
+- `ci.yml` — runs on PRs, generic (no fork-specific logic)
+
 ## Troubleshooting
 
 **WhatsApp not connecting after upgrade:** WhatsApp is now a separate channel fork, not bundled in core. Run `/add-whatsapp` (or `git remote add whatsapp https://github.com/qwibitai/nanoclaw-whatsapp.git && git fetch whatsapp main && (git merge whatsapp/main || { git checkout --theirs package-lock.json && git add package-lock.json && git merge --continue; }) && npm run build`) to install it. Existing auth credentials and groups are preserved.
