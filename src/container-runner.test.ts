@@ -15,6 +15,7 @@ vi.mock('./config.js', () => ({
   DATA_DIR: '/tmp/nanoclaw-test-data',
   GROUPS_DIR: '/tmp/nanoclaw-test-groups',
   IDLE_TIMEOUT: 1800000, // 30min
+  OLLAMA_ADMIN_TOOLS: false,
   TIMEZONE: 'America/Los_Angeles',
 }));
 
@@ -281,18 +282,19 @@ describe('buildVolumeMounts isolation', () => {
     );
   });
 
-  it('main group shadows .env when it exists', () => {
+  it('main group does not add /dev/null .env shadow (Apple Container uses entrypoint mount --bind)', () => {
     vi.mocked(fs.existsSync).mockImplementation((p) =>
       String(p).endsWith('.env'),
     );
 
     const mounts = buildVolumeMounts(mainGroup, true);
 
-    expect(mounts).toContainEqual(
+    // Apple Container handles .env shadowing inside the container entrypoint
+    // via mount --bind, not via a /dev/null file mount
+    expect(mounts).not.toContainEqual(
       expect.objectContaining({
         hostPath: '/dev/null',
         containerPath: '/workspace/project/.env',
-        readonly: true,
       }),
     );
   });
