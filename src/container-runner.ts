@@ -56,7 +56,7 @@ interface VolumeMount {
   readonly: boolean;
 }
 
-function buildVolumeMounts(
+export function buildVolumeMounts(
   group: RegisteredGroup,
   isMain: boolean,
 ): VolumeMount[] {
@@ -249,6 +249,16 @@ function buildContainerArgs(
   if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
     args.push('--user', `${hostUid}:${hostGid}`);
     args.push('-e', 'HOME=/home/node');
+  }
+
+  // SSH agent socket forwarding works on Linux Docker and Apple Container (macOS native),
+  // but NOT on Docker Desktop for Mac — macOS sockets can't cross the Linux VM boundary.
+  if (process.platform !== 'darwin') {
+    const sshAuthSock = process.env.SSH_AUTH_SOCK;
+    if (sshAuthSock && fs.existsSync(sshAuthSock)) {
+      args.push('-v', `${sshAuthSock}:/ssh-agent`);
+      args.push('-e', 'SSH_AUTH_SOCK=/ssh-agent');
+    }
   }
 
   for (const mount of mounts) {
