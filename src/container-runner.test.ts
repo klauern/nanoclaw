@@ -42,6 +42,7 @@ vi.mock('fs', async () => {
       readdirSync: vi.fn(() => []),
       statSync: vi.fn(() => ({ isDirectory: () => false })),
       copyFileSync: vi.fn(),
+      cpSync: vi.fn(),
     },
   };
 });
@@ -86,7 +87,12 @@ vi.mock('child_process', async () => {
   };
 });
 
-import { runContainerAgent, ContainerOutput } from './container-runner.js';
+import fs from 'fs';
+import {
+  buildVolumeMounts,
+  runContainerAgent,
+  ContainerOutput,
+} from './container-runner.js';
 import type { RegisteredGroup } from './types.js';
 
 const testGroup: RegisteredGroup = {
@@ -206,5 +212,98 @@ describe('container-runner timeout behavior', () => {
     const result = await resultPromise;
     expect(result.status).toBe('success');
     expect(result.newSessionId).toBe('session-456');
+  });
+});
+
+describe('buildVolumeMounts isolation', () => {
+  const mainGroup: RegisteredGroup = {
+    name: 'Main Group',
+    folder: 'main-group',
+    trigger: '@Andy',
+    added_at: new Date().toISOString(),
+    isMain: true,
+  };
+
+  const nonMainGroup: RegisteredGroup = {
+    name: 'Other Group',
+    folder: 'other-group',
+    trigger: '@Andy',
+    added_at: new Date().toISOString(),
+  };
+
+  beforeEach(() => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+  });
+
+  it('main group gets project root read-only and group folder writable', () => {
+    const mounts = buildVolumeMounts(mainGroup, true);
+
+    expect(mounts).toContainEqual(
+      expect.objectContaining({
+        hostPath: process.cwd(),
+        containerPath: '/workspace/project',
+        readonly: true,
+      }),
+    );
+    expect(mounts).toContainEqual(
+      expect.objectContaining({
+        containerPath: '/workspace/group',
+        readonly: false,
+      }),
+    );
+  });
+
+  it('non-main group does not get project root', () => {
+    const mounts = buildVolumeMounts(nonMainGroup, false);
+
+    expect(
+      mounts.find((m) => m.containerPath === '/workspace/project'),
+    ).toBeUndefined();
+    expect(mounts).toContainEqual(
+      expect.objectContaining({
+        containerPath: '/workspace/group',
+        readonly: false,
+      }),
+    );
+  });
+
+  it('main group shadows .env when it exists', () => {
+    vi.mocked(fs.existsSync).mockImplementation((p) =>
+      String(p).endsWith('.env'),
+    );
+
+    const mounts = buildVolumeMounts(mainGroup, true);
+
+    expect(mounts).toContainEqual(
+      expect.objectContaining({
+        hostPath: '/dev/null',
+        containerPath: '/workspace/project/.env',
+        readonly: true,
+      }),
+    );
+  });
+
+  it('non-main group gets global memory read-only when the directory exists', () => {
+    vi.mocked(fs.existsSync).mockImplementation((p) =>
+      String(p).endsWith('/global'),
+    );
+
+    const mounts = buildVolumeMounts(nonMainGroup, false);
+
+    expect(mounts).toContainEqual(
+      expect.objectContaining({
+        containerPath: '/workspace/global',
+        readonly: true,
+      }),
+    );
+  });
+
+  it('non-main group never gets project root even when main exists', () => {
+    const mounts = buildVolumeMounts(nonMainGroup, false);
+
+    const projectMount = mounts.find(
+      (m) => m.containerPath === '/workspace/project',
+    );
+    expect(projectMount).toBeUndefined();
   });
 });
