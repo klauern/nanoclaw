@@ -1,1 +1,16 @@
-{}
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "which rudel > /dev/null 2>&1 && rudel hooks claude session-end || true",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
