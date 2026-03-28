@@ -32,6 +32,9 @@ groups/global/*
 .idea/
 .vscode/
 
+# Override global gitignore to track project-level Claude Code config
+!.claude/
+
 # Skills system (local per-installation state)
 .nanoclaw/
 
